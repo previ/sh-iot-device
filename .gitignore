@@ -1,0 +1,5 @@
+config.py
+*.pem
+env*/*
+screenlog*
+__pycache__
