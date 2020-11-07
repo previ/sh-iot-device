@@ -1,0 +1,27 @@
+{
+  "ota_config": {
+    "repo_url": "",
+    "repo_path": ""
+  }
+  "device_config": {
+    "led_pin": 2,
+    "read_interval": 10
+  },
+  "wifi_config": {
+    "ssid": "my-ssd",
+    "password": "my-password"
+  },
+  "jwt_config": {
+    "algorithm": "RS256",
+    "token_ttl": 1,
+    "private_key": []
+  },
+  "google_cloud_config": {
+    "project_id": "my-project",
+    "cloud_region": "my-region",
+    "registry_id": "my-registry",
+    "device_id": "my-device-id",
+    "mqtt_bridge_hostname": "mqtt.googleapis.com",
+    "mqtt_bridge_port": 8883
+  }
+}
