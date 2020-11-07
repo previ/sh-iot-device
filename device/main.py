@@ -84,7 +84,8 @@ class Device():
         tm = utime.localtime()
         tm = tm[0:3] + (0,) + tm[3:6] + (0,)
         machine.RTC().datetime(tm)
-        print('current time: {}'.format(utime.localtime()))
+        print('current localtime: {}'.format(utime.localtime()))
+        print('current time: {}'.format(utime.time()))
 
     def b42_urlsafe_encode(self, payload):
         return string.translate(b2a_base64(payload)[:-1].decode('utf-8'),{ ord('+'):'-', ord('/'):'_' })
