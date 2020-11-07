@@ -37,7 +37,9 @@ class Device():
         self.config = ujson.load(f)
         f.close()
         self.sta_if = network.WLAN(network.STA_IF)
-        self.ota = ota_updater.OTAUpdater(github_repo=self.config['ota_config']['repo_url'], main_dir=self.config['ota_config']['repo_url'])
+        self.ota = ota_updater.OTAUpdater(github_repo=self.config['ota_config']['repo_url'], 
+                                          main_dir=self.config['ota_config']['repo_url'],
+                                          headers={'Authorization': 'token {}'.format(self.config['ota_config']['repo_token'])})
         self.jwt = None
         self.client = None
         self.led_pin = machine.Pin(self.config['device_config']['led_pin'], Pin.OUT) #built-in LED pin
@@ -64,7 +66,8 @@ class Device():
                 if message_json.get('cmd') == "reset":
                     machine.reset()
                 if message_json.get('cmd') == "update":
-                    self.o.download_and_install_update_if_available(None, None)                    
+                    self.ota.check_for_update_to_install_during_next_reboot()
+                    self.ota.download_and_install_update_if_available(None, None)                    
         except Exception as e:
             print("on_message.Exception: " + str(e))
 
@@ -125,14 +128,24 @@ class Device():
         return client
 
     def connect_mqtt(self):
-        self.jwt = self.create_jwt(self.config['google_cloud_config']['project_id'], self.config['jwt_config']['private_key'], self.config['jwt_config']['algorithm'], self.config['jwt_config']['token_ttl'])
-        self.client = self.get_mqtt_client(self.config['google_cloud_config']['project_id'], self.config['google_cloud_config']['cloud_region'], self.config['google_cloud_config']['registry_id'], self.config['google_cloud_config']['device_id'], self.jwt)
+        try:
+            self.jwt = self.create_jwt(self.config['google_cloud_config']['project_id'], self.config['jwt_config']['private_key'], self.config['jwt_config']['algorithm'], self.config['jwt_config']['token_ttl'])
+            print("jwt ok")
+        except Exception as e:
+            print("connect_mqtt.jwt.Exception: " + str(e))
+        try:
+            self.client = self.get_mqtt_client(self.config['google_cloud_config']['project_id'], self.config['google_cloud_config']['cloud_region'], self.config['google_cloud_config']['registry_id'], self.config['google_cloud_config']['device_id'], self.jwt)
+            print("mqtt connected")
+        except Exception as e:
+            print("connect_mqtt.client.Exception: " + str(e))
 
     def reconnect(self):
         if self.is_connected() is False:
             self.connect_wifi()
             #Need to be connected to the internet before setting the local RTC.
             self.set_time()
+            
+        if self.client is None:
             self.connect_mqtt()
 
     def read_input(self):
@@ -155,10 +168,18 @@ class Device():
                     print("Publishing message 1: "+str(ujson.dumps(message)))
                     self.led_pin.value(1)
                     mqtt_topic = '/devices/{}/{}'.format(self.config['google_cloud_config']['device_id'], 'events')
-                    self.client.publish(mqtt_topic.encode('utf-8'), ujson.dumps(message).encode('utf-8'))
+
+                    try:
+                        self.client.publish(mqtt_topic.encode('utf-8'), ujson.dumps(message).encode('utf-8'))
+                    except Exception as e:
+                        print("publish.Exception: " + str(e))
+
                     self.led_pin.value(0)
 
-                self.client.check_msg() # Check for new messages on subscription
+                try:
+                    self.client.check_msg() # Check for new messages on subscription
+                except Exception as e:
+                    print("check_msg.Exception: " + str(e))
             except Exception as e:
                 print("Exception: " + str(e))
 
