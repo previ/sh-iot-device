@@ -24,21 +24,26 @@ class AbstractKey(object):
 
     @classmethod
     def _load_pkcs1_pem(cls, keyfile):
-        #--
+        """
+        """
 
     @classmethod
     def _load_pkcs1_der(cls, keyfile):
-        #--
+        """
+        """
 
     def _save_pkcs1_pem(self):
-        #--
+        """
+        """
 
     def _save_pkcs1_der(self):
-        #--
+        """
+        """
 
     @classmethod
     def load_pkcs1(cls, keyfile, format='PEM'):
-        #--
+        """
+        """
 
         methods = {
             'PEM': cls._load_pkcs1_pem,
@@ -253,35 +258,6 @@ class PrivateKey(AbstractKey):
         from pyasn1.codec.der import decoder
         (priv, _) = decoder.decode(keyfile)
 
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-        ##
-
-
         if priv[0] != 0:
             raise ValueError('Unable to read this file, version %s != 0' % priv[0])
 
@@ -319,8 +295,6 @@ class PrivateKey(AbstractKey):
                 namedtype.NamedType('coefficient', univ.Integer()),
             )
 
-        ##
-
         asn_key = AsnPrivKey()
         asn_key.setComponentByName('version', 0)
         asn_key.setComponentByName('modulus', self.n)
@@ -336,7 +310,6 @@ class PrivateKey(AbstractKey):
 
     @classmethod
     def _load_pkcs1_pem(cls, keyfile):
-        #--
 
         der = third_party.rsa.pem.load_pem(keyfile, b'RSA PRIVATE KEY')
         return cls._load_pkcs1_der(der)
@@ -349,19 +322,10 @@ class PrivateKey(AbstractKey):
 
 
 def find_p_q(nbits, getprime_func=third_party.rsa.prime.getprime, accurate=True):
-    #--
-
     total_bits = nbits * 2
-
-    ##
-
-    ##
-
     shift = nbits // 16
     pbits = nbits + shift
     qbits = nbits - shift
-
-    ##
 
     log.debug('find_p_q(%i): Finding p', nbits)
     p = getprime_func(pbits)
@@ -369,7 +333,6 @@ def find_p_q(nbits, getprime_func=third_party.rsa.prime.getprime, accurate=True)
     q = getprime_func(qbits)
 
     def is_acceptable(p, q):
-        #--
 
         if p == q:
             return False
@@ -395,15 +358,10 @@ def find_p_q(nbits, getprime_func=third_party.rsa.prime.getprime, accurate=True)
 
         change_p = not change_p
 
-    ##
-
-    ##
-
     return max(p, q), min(p, q)
 
 
 def calculate_keys_custom_exponent(p, q, exponent):
-    #--
 
     phi_n = (p - 1) * (q - 1)
 
@@ -429,11 +387,6 @@ def calculate_keys(p, q):
 
 
 def gen_keys(nbits, getprime_func, accurate=True, exponent=DEFAULT_EXPONENT):
-    #--
-
-    ##
-
-    ##
 
     while True:
         (p, q) = find_p_q(nbits // 2, getprime_func, accurate)
@@ -447,15 +400,12 @@ def gen_keys(nbits, getprime_func, accurate=True, exponent=DEFAULT_EXPONENT):
 
 
 def newkeys(nbits, accurate=True, poolsize=1, exponent=DEFAULT_EXPONENT):
-    #--
 
     if nbits < 16:
         raise ValueError('Key too small')
 
     if poolsize < 1:
         raise ValueError('Pool size (%i) should be >= 1' % poolsize)
-
-    ##
 
     if poolsize > 1:
         from rsa import parallel
@@ -465,11 +415,7 @@ def newkeys(nbits, accurate=True, poolsize=1, exponent=DEFAULT_EXPONENT):
     else:
         getprime_func = third_party.rsa.prime.getprime
 
-    ##
-
     (p, q, e, d) = gen_keys(nbits, getprime_func, accurate=accurate, exponent=exponent)
-
-    ##
 
     n = p * q
 
