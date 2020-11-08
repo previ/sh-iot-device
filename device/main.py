@@ -1,5 +1,7 @@
 import ujson
 import utime
+import os
+
 from third_party import ota_updater
 
 
@@ -18,5 +20,8 @@ def start(config_data):
 if __name__ == "__main__":
     f = open('config.json')
     config_data = ujson.load(f)
-    download_and_install_update_if_available(config_data)
+
+    if ota_updater.OTAUpdater.get_check_update():
+        download_and_install_update_if_available(config_data)
+
     start(config_data)

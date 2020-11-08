@@ -60,7 +60,7 @@ class Device():
                 if message_json.get('cmd') == "reset":
                     machine.reset()
                 if message_json.get('cmd') == "update":
-                    self.ota.check_for_update_to_install_during_next_reboot()
+                    self.ota.set_check_update()
                     machine.reset()
         except Exception as e:
             print("on_message.Exception: " + str(e))

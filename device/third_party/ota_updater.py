@@ -10,13 +10,29 @@ import machine
 
 class OTAUpdater:
 
+    CHECKFORUPDATE_FILENAME = '.check_update'
+
     def __init__(self, github_repo, module='', main_repo_dir='main', main_dir='main', headers={}):
         self.http_client = HttpClient(headers=headers)
         self.github_repo = github_repo.rstrip('/').replace('https://github.com', 'https://api.github.com/repos')
         self.main_repo_dir = main_repo_dir
         self.main_dir = main_dir
         self.module = module.rstrip('/')
-        
+
+    @staticmethod
+    def set_check_update(cls):
+        open('.check_update', 'w')
+
+    @staticmethod
+    def get_check_update(cls):
+        try:
+            open('.check_update', 'r')
+            os.remove('.check_update')
+            return True
+        except OSError:
+            return False
+
+
     @staticmethod
     def using_network(ssid, password):
         import network
