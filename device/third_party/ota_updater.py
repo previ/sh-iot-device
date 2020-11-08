@@ -9,9 +9,10 @@ import machine
 
 class OTAUpdater:
 
-    def __init__(self, github_repo, module='', main_dir='main', headers={}):
+    def __init__(self, github_repo, module='', main_repo_dir='main', main_dir='main', headers={}):
         self.http_client = HttpClient(headers=headers)
         self.github_repo = github_repo.rstrip('/').replace('https://github.com', 'https://api.github.com/repos')
+        self.main_repo_dir = main_repo_dir
         self.main_dir = main_dir
         self.module = module.rstrip('/')
         
@@ -36,12 +37,13 @@ class OTAUpdater:
         print('\tLatest version: ', latest_version)
         if latest_version > current_version:
             print('New version available, will download and install on next reboot')
+            self.rmtree(self.modulepath('next'))
             os.mkdir(self.modulepath('next'))
             with open(self.modulepath('next/.version_on_reboot'), 'w') as versionfile:
                 versionfile.write(latest_version)
                 versionfile.close()
 
-    def download_and_install_update_if_available(self, ssid, password):
+    def download_and_install_update_if_available(self, ssid=None, password=None):
         if 'next' in os.listdir(self.module):
             if '.version_on_reboot' in os.listdir(self.modulepath('next')):
                 latest_version = self.get_version(self.modulepath('next'), '.version_on_reboot')
@@ -51,9 +53,10 @@ class OTAUpdater:
             print('No new updates found...')
 
     def _download_and_install_update(self, latest_version, ssid, password):
-        #OTAUpdater.using_network(ssid, password)
+        if ssid:
+            OTAUpdater.using_network(ssid, password)
 
-        self.download_all_files(self.github_repo + '/contents/' + self.main_dir, latest_version)
+        self.download_all_files(self.github_repo + '/contents/' + self.main_repo_dir, latest_version)
         self.rmtree(self.modulepath(self.main_dir))
         os.rename(self.modulepath('next/.version_on_reboot'), self.modulepath('next/.version'))
         os.rename(self.modulepath('next'), self.modulepath(self.main_dir))
@@ -84,7 +87,7 @@ class OTAUpdater:
         if latest_version > current_version:
             print('Updating...')
             os.mkdir(self.modulepath('next'))
-            self.download_all_files(self.github_repo + '/contents/' + self.main_dir, latest_version)
+            self.download_all_files(self.github_repo + '/contents/' + self.main_repo_dir, latest_version)
             with open(self.modulepath('next/.version'), 'w') as versionfile:
                 versionfile.write(latest_version)
                 versionfile.close()
@@ -121,7 +124,7 @@ class OTAUpdater:
         for file in file_list.json():
             if file['type'] == 'file':
                 download_url = file['download_url']
-                download_path = self.modulepath('next/' + file['path'].replace(self.main_dir + '/', ''))
+                download_path = self.modulepath('next/' + file['path'].replace(self.main_repo_dir + '/', ''))
                 self.download_file(download_url.replace('refs/tags/', ''), download_path)
             elif file['type'] == 'dir':
                 path = self.modulepath('next/' + file['path'].replace(self.main_dir + '/', ''))
@@ -135,7 +138,7 @@ class OTAUpdater:
         with open(path, 'w') as outfile:
             try:
                 response = self.http_client.get(url)
-                outfile.write(response.text)
+                outfile.write(response.content)                  
             finally:
                 response.close()
                 outfile.close()
