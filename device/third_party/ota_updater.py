@@ -20,18 +20,19 @@ class OTAUpdater:
         self.module = module.rstrip('/')
 
     @staticmethod
-    def set_check_update(cls):
-        open('.check_update', 'w')
+    def set_check_update():
+        f = open(OTAUpdater.CHECKFORUPDATE_FILENAME, 'w')
+        f.write("True")
+        f.close()
 
     @staticmethod
-    def get_check_update(cls):
+    def get_check_update():
         try:
-            open('.check_update', 'r')
-            os.remove('.check_update')
+            open(OTAUpdater.CHECKFORUPDATE_FILENAME, 'r')
+            os.remove(OTAUpdater.CHECKFORUPDATE_FILENAME)
             return True
         except OSError:
             return False
-
 
     @staticmethod
     def using_network(ssid, password):
@@ -62,6 +63,9 @@ class OTAUpdater:
             with open(self.modulepath('next/.version_on_reboot'), 'w') as versionfile:
                 versionfile.write(latest_version)
                 versionfile.close()
+                return True # new version available
+        else:
+            return False # no new version available
 
     def download_and_install_update_if_available(self, ssid=None, password=None):
         if 'next' in os.listdir(self.module):

@@ -21,7 +21,6 @@ if __name__ == "__main__":
     f = open('config.json')
     config_data = ujson.load(f)
 
-    if ota_updater.OTAUpdater.get_check_update():
-        download_and_install_update_if_available(config_data)
+    download_and_install_update_if_available(config_data)
 
     start(config_data)

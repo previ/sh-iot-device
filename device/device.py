@@ -61,6 +61,7 @@ class Device():
                     machine.reset()
                 if message_json.get('cmd') == "update":
                     self.ota.set_check_update()
+                    utime.sleep(1) # let mqtt client deliver the ack
                     machine.reset()
         except Exception as e:
             print("on_message.Exception: " + str(e))
@@ -137,6 +138,11 @@ class Device():
             self.connect_wifi()
             #Need to be connected to the internet before setting the local RTC.
             self.set_time()
+
+            if self.ota.get_check_update():
+                if self.ota.check_for_update_to_install_during_next_reboot():
+                    machine.reset()
+
         if self.client is None:
             self.connect_mqtt()
 
