@@ -3,6 +3,7 @@
 
 import usocket
 import os
+from third_party import shutil
 import gc
 import machine
 
@@ -37,7 +38,10 @@ class OTAUpdater:
         print('\tLatest version: ', latest_version)
         if latest_version > current_version:
             print('New version available, will download and install on next reboot')
-            self.rmtree(self.modulepath('next'))
+            try:
+                self.rmtree(self.modulepath('next'))
+            except Exception:
+                pass
             os.mkdir(self.modulepath('next'))
             with open(self.modulepath('next/.version_on_reboot'), 'w') as versionfile:
                 versionfile.write(latest_version)
@@ -57,9 +61,11 @@ class OTAUpdater:
             OTAUpdater.using_network(ssid, password)
 
         self.download_all_files(self.github_repo + '/contents/' + self.main_repo_dir, latest_version)
-        self.rmtree(self.modulepath(self.main_dir))
+        #self.rmtree(self.modulepath(self.main_dir))
         os.rename(self.modulepath('next/.version_on_reboot'), self.modulepath('next/.version'))
-        os.rename(self.modulepath('next'), self.modulepath(self.main_dir))
+        self.copytree(self.modulepath('next'), self.modulepath(self.main_dir))
+        self.rmtree(self.modulepath('next'))
+        #os.rename(self.modulepath('next'), self.modulepath(self.main_dir))
         print('Update installed (', latest_version, '), will reboot now')
         machine.reset()
 
@@ -100,10 +106,26 @@ class OTAUpdater:
             is_dir = entry[1] == 0x4000
             if is_dir:
                 self.rmtree(directory + '/' + entry[0])
-
             else:
                 os.remove(directory + '/' + entry[0])
-        os.rmdir(directory)
+        if directory is not "/": # can't and won't delete root
+            os.rmdir(directory)
+
+    def copytree(self, src, dst, symlinks=False, ignore=None):
+        for entry in os.ilistdir(src):
+            is_dir = entry[1] == 0x4000
+            s = src + '/' + entry[0]
+            d = dst + '/' + entry[0]
+            if is_dir:
+                try:                 
+                    os.mkdir(d)
+                except Exception as e:
+                    pass
+                self.copytree(s, d, symlinks, ignore)
+            else:
+                if ignore:
+                    os.remove(d)
+                shutil.copyfile(s, d)
 
     def get_version(self, directory, version_file_name='.version'):
         if version_file_name in os.listdir(directory):
@@ -127,7 +149,7 @@ class OTAUpdater:
                 download_path = self.modulepath('next/' + file['path'].replace(self.main_repo_dir + '/', ''))
                 self.download_file(download_url.replace('refs/tags/', ''), download_path)
             elif file['type'] == 'dir':
-                path = self.modulepath('next/' + file['path'].replace(self.main_dir + '/', ''))
+                path = self.modulepath('next/' + file['path'].replace(self.main_repo_dir + '/', ''))
                 os.mkdir(path)
                 self.download_all_files(root_url + '/' + file['name'], version)
 
