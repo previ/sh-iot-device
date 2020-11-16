@@ -77,6 +77,21 @@ class Device():
             pass
         print('network config: {}'.format(self.sta_if.ifconfig()))
 
+    def disconnect_wifi(self):
+        print('disconnecting to network...')
+        self.sta_if.disconnect()
+        self.sta_if.active(False)
+
+    def disconnect(self):
+        try:
+            self.client.disconnect()
+            self.client.close()
+        except Exception:
+            pass
+        self.client = None
+        self.jwt = None
+        self.disconnect_wifi()
+
     def set_time(self):
         ntptime.settime()
         tm = utime.localtime()
@@ -146,9 +161,9 @@ class Device():
         if self.client is None:
             self.connect_mqtt()
 
-    def read_input(self):
-        return { "h": self.sensor.humidity,
-                 "t": self.sensor.temperature }
+    def read_input(self, input_id):
+        return { "s1h": self.sensor.humidity,
+                 "s1t": self.sensor.temperature }[input_id]        
 
     def loop(self):
         last_time = 0
@@ -156,32 +171,39 @@ class Device():
             try:
                 self.reconnect()
                 if utime.time() - last_time > self.config['device_config']['read_interval']:
-                    last_time = utime.time() 
-                    data = self.read_input()
-                    message = {
-                        'device_id': self.config['google_cloud_config']['device_id'],
-                        'ts': utime.time() + epoch_offset,
-                        'data': data
-                    }
-                    print("Publishing message 1: "+str(ujson.dumps(message)))
-                    self.led_pin.value(1)
-                    mqtt_topic = '/devices/{}/{}'.format(self.config['google_cloud_config']['device_id'], 'events')
+                    for input_id in ['s1h', 's1t']:
+                        last_time = utime.time() 
+                        data = self.read_input(input_id)
+                        message = {
+                            'ts': utime.time() + epoch_offset,
+                             'home_id': self.config['google_cloud_config']['home_id'],
+                             'device_id': self.config['google_cloud_config']['device_id'],
+                             'input_id': input_id,
+                             'data': data
+                        }
+                        print("Publishing message: "+str(ujson.dumps(message)))
+                        self.led_pin.value(1)
+                        mqtt_topic = '/devices/{}/{}'.format(self.config['google_cloud_config']['device_id'], 'events')
 
-                    try:
-                        self.client.publish(mqtt_topic.encode('utf-8'), ujson.dumps(message).encode('utf-8'))
-                    except Exception as e:
-                        print("publish.Exception: " + str(e))
+                        try:
+                            self.client.publish(mqtt_topic.encode('utf-8'), 
+                                                ujson.dumps(message).encode('utf-8'))
+                        except Exception as e:
+                            print("publish.Exception: " + str(e))
+                            self.disconnect()                        
 
-                    self.led_pin.value(0)
+                        self.led_pin.value(0)
 
                 try:
                     self.client.check_msg() # Check for new messages on subscription
                 except Exception as e:
                     print("check_msg.Exception: " + str(e))
+                    self.disconnect()
+
             except Exception as e:
                 print("Exception: " + str(e))
 
-            utime.sleep(1)  # Delay for 900 seconds.
+            utime.sleep(1)  # Delay for 1 second(s).
 
 def on_message(topic, message):
     return Device.get_instance().on_message(topic, message)
