@@ -5,6 +5,7 @@ from third_party import string
 import network
 import socket
 import os
+import sys
 import utime
 import ssl
 from third_party import rsa
@@ -36,9 +37,10 @@ class Device():
                                           headers={'Authorization': 'token {}'.format(self.config['ota_config']['repo_token'])})
         self.jwt = None
         self.client = None
-        self.led_pin = machine.Pin(self.config['device_config']['led_pin'], Pin.OUT) #built-in LED pin
-        self.led_pin.value(1)
         self.sensor = htu21d.HTU21D(22,21)
+        self.outputs = {'do1': machine.Pin(self.config['device_config']['do1_pin'], Pin.OUT),
+                        'do2': machine.Pin(self.config['device_config']['do2_pin'], Pin.OUT),
+                        'do3': machine.Pin(self.config['device_config']['do3_pin'], Pin.OUT)}
 
     def on_message(self, topic, message):
         try:
@@ -46,6 +48,7 @@ class Device():
             message_json = ujson.loads(message.decode('utf-8'))
             if 'config' in topic:
                 self.config.update(message_json)
+                print("updated config: " + str(self.config))
                 f = open('config.json', 'w')
                 ujson.dump(self.config, f)
                 f.close()
@@ -63,6 +66,10 @@ class Device():
                     self.ota.set_check_update()
                     utime.sleep(1) # let mqtt client deliver the ack
                     machine.reset()
+                if message_json.get('cmd') == "set_state":
+                    output_id = message_json.get('output_id')
+                    state = message_json.get('state')
+                    self.write_output(output_id, state.get('state'))
         except Exception as e:
             print("on_message.Exception: " + str(e))
 
@@ -165,6 +172,9 @@ class Device():
         return { "s1h": self.sensor.humidity,
                  "s1t": self.sensor.temperature }[input_id]        
 
+    def write_output(self, output_id, state):
+        self.outputs.get(output_id).value(state)
+
     def loop(self):
         last_time = 0
         while True:
@@ -182,7 +192,7 @@ class Device():
                              'data': data
                         }
                         print("Publishing message: "+str(ujson.dumps(message)))
-                        self.led_pin.value(1)
+                        self.write_output('do1', True)
                         mqtt_topic = '/devices/{}/{}'.format(self.config['google_cloud_config']['device_id'], 'events')
 
                         try:
@@ -192,7 +202,7 @@ class Device():
                             print("publish.Exception: " + str(e))
                             self.disconnect()                        
 
-                        self.led_pin.value(0)
+                        self.write_output('do1', False)
 
                 try:
                     self.client.check_msg() # Check for new messages on subscription
